@@ -7,6 +7,7 @@ import Despensa from "./pages/Despensa";
 import Adicionar from "./pages/Adicionar";
 import Receitas from "./pages/Receitas";
 import Alertas from "./pages/Alertas";
+import Instalar from "./pages/Instalar";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
             <Route path="/adicionar" element={<Adicionar />} />
             <Route path="/receitas" element={<Receitas />} />
             <Route path="/alertas" element={<Alertas />} />
+            <Route path="/instalar" element={<Instalar />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Camera, Image, Plus, Check, Calendar } from "lucide-react";
+import { Camera, Image, Plus, Check, Calendar, Barcode } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 import Header from "@/components/Header";
+import BarcodeScanner from "@/components/BarcodeScanner";
 
 interface ScannedItem {
   id: string;
@@ -14,14 +15,28 @@ interface ScannedItem {
   quantity: string;
   expiryDate: string;
   confirmed: boolean;
+  barcode?: string;
 }
+
+// Mock product database (simulating barcode lookup)
+const productDatabase: Record<string, { name: string; category: string }> = {
+  "7891000100103": { name: "Leite Integral Nestlé", category: "Laticínios" },
+  "7891149410116": { name: "Arroz Tio João 5kg", category: "Grãos" },
+  "7891000053508": { name: "Nescafé Tradicional 200g", category: "Bebidas" },
+  "7896004400013": { name: "Óleo de Soja Soya 900ml", category: "Óleos" },
+  "7891031411001": { name: "Açúcar União 1kg", category: "Açúcares" },
+  "7896036093085": { name: "Feijão Carioca Camil 1kg", category: "Grãos" },
+  "7891000315804": { name: "Biscoito Negresco", category: "Biscoitos" },
+  "7896102500059": { name: "Macarrão Barilla 500g", category: "Massas" },
+};
 
 const Adicionar = () => {
   const { toast } = useToast();
-  const [mode, setMode] = useState<"select" | "scan" | "manual" | "confirm">("select");
+  const [mode, setMode] = useState<"select" | "scan" | "manual" | "confirm" | "barcode">("select");
   const [isProcessing, setIsProcessing] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [manualItem, setManualItem] = useState({ name: "", quantity: "", expiryDate: "" });
+  const [manualItem, setManualItem] = useState({ name: "", quantity: "", expiryDate: "", barcode: "" });
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
   const simulateScan = () => {
     setIsProcessing(true);
@@ -35,6 +50,39 @@ const Adicionar = () => {
       setIsProcessing(false);
       setMode("confirm");
     }, 2000);
+  };
+
+  const handleBarcodeScanned = (barcode: string) => {
+    setShowBarcodeScanner(false);
+    
+    // Look up product in database
+    const product = productDatabase[barcode];
+    
+    if (product) {
+      setManualItem({
+        name: product.name,
+        quantity: "1 uni",
+        expiryDate: "",
+        barcode: barcode,
+      });
+      toast({
+        title: "Produto Encontrado!",
+        description: `${product.name} identificado pelo código de barras.`,
+      });
+    } else {
+      setManualItem({
+        name: "",
+        quantity: "1 uni",
+        expiryDate: "",
+        barcode: barcode,
+      });
+      toast({
+        title: "Código Escaneado",
+        description: `Código ${barcode}. Preencha os dados do produto.`,
+      });
+    }
+    
+    setMode("manual");
   };
 
   const confirmItem = (id: string) => {
@@ -67,7 +115,7 @@ const Adicionar = () => {
       title: "Item Adicionado!",
       description: `${manualItem.name} foi adicionado à despensa.`,
     });
-    setManualItem({ name: "", quantity: "", expiryDate: "" });
+    setManualItem({ name: "", quantity: "", expiryDate: "", barcode: "" });
     setMode("select");
   };
 
@@ -77,6 +125,22 @@ const Adicionar = () => {
 
       {mode === "select" && (
         <div className="px-4 space-y-4">
+          {/* Barcode Scanner Card */}
+          <Card 
+            className="p-6 cursor-pointer border-0 shadow-md bg-gradient-to-br from-primary to-primary/80"
+            onClick={() => setShowBarcodeScanner(true)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-primary-foreground/20 rounded-xl">
+                <Barcode className="h-8 w-8 text-primary-foreground" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-primary-foreground text-lg">Escanear Código de Barras</h3>
+                <p className="text-sm text-primary-foreground/80">Use a câmera para identificar produtos</p>
+              </div>
+            </div>
+          </Card>
+
           {/* Scan Receipt Card */}
           <Card 
             className="scan-card p-6 cursor-pointer border-0"
@@ -189,7 +253,27 @@ const Adicionar = () => {
       {mode === "manual" && (
         <div className="px-4 space-y-4">
           <Card className="p-6 border-0 shadow-md">
-            <h3 className="font-semibold mb-4">Adicionar Produto</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold">Adicionar Produto</h3>
+              {!manualItem.barcode && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBarcodeScanner(true)}
+                >
+                  <Barcode className="h-4 w-4 mr-1" />
+                  Escanear
+                </Button>
+              )}
+            </div>
+            
+            {manualItem.barcode && (
+              <div className="mb-4 p-3 bg-accent rounded-lg">
+                <p className="text-xs text-muted-foreground">Código de Barras</p>
+                <p className="font-mono text-sm">{manualItem.barcode}</p>
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <Label htmlFor="name">Nome do Produto</Label>
@@ -224,7 +308,10 @@ const Adicionar = () => {
             </div>
           </Card>
           <div className="flex gap-3">
-            <Button variant="outline" className="flex-1" onClick={() => setMode("select")}>
+            <Button variant="outline" className="flex-1" onClick={() => {
+              setMode("select");
+              setManualItem({ name: "", quantity: "", expiryDate: "", barcode: "" });
+            }}>
               Cancelar
             </Button>
             <Button className="flex-1" onClick={addManualItem}>
@@ -233,6 +320,13 @@ const Adicionar = () => {
           </div>
         </div>
       )}
+
+      {/* Barcode Scanner Modal */}
+      <BarcodeScanner
+        isOpen={showBarcodeScanner}
+        onClose={() => setShowBarcodeScanner(false)}
+        onScan={handleBarcodeScanned}
+      />
 
       <BottomNav />
     </div>
